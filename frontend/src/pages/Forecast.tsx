@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Sparkles, TrendingUp, Calendar, ShieldCheck, Cpu } from 'lucide-react';
+import { LineChart, Sparkles, TrendingUp, Calendar, ShieldCheck, Cpu, Volume2, RefreshCw } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { api } from '../api/client';
 import { ForecastResponse } from '../types';
+import { speakPowerOptix } from '../utils/audioAssistant';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -11,11 +12,18 @@ export const Forecast: React.FC = () => {
   const [forecastData, setForecastData] = useState<ForecastResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadForecast = async () => {
+  const speakForecastInfo = () => {
+    speakPowerOptix('Energy forecast completed successfully.', 'LOW', 'forecast_completed_evt', 'success');
+  };
+
+  const loadForecast = async (isUserAction = false) => {
     try {
       setLoading(true);
       const res = await api.getForecast();
       setForecastData(res);
+      if (isUserAction) {
+        speakForecastInfo();
+      }
     } catch (err) {
       console.error('Error fetching ML forecast:', err);
     } finally {
@@ -24,7 +32,7 @@ export const Forecast: React.FC = () => {
   };
 
   useEffect(() => {
-    loadForecast();
+    loadForecast(false);
   }, []);
 
   if (loading || !forecastData) {
@@ -97,15 +105,27 @@ export const Forecast: React.FC = () => {
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '1rem', background: 'rgba(0,0,0,0.3)', padding: '0.85rem 1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-            <div>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Model R² Accuracy</span>
-              <strong className="font-mono" style={{ fontSize: '1.2rem', color: 'var(--accent-emerald)' }}>{(forecastData.r2_score * 100).toFixed(1)}%</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', background: 'rgba(0,0,0,0.3)', padding: '0.85rem 1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Model R² Accuracy</span>
+                <strong className="font-mono" style={{ fontSize: '1.2rem', color: 'var(--accent-emerald)' }}>{(forecastData.r2_score * 100).toFixed(1)}%</strong>
+              </div>
+              <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1rem' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>MAE Error</span>
+                <strong className="font-mono" style={{ fontSize: '1.2rem', color: 'var(--accent-cyan)' }}>±{forecastData.mae_kwh} kWh</strong>
+              </div>
             </div>
-            <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1rem' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>MAE Error</span>
-              <strong className="font-mono" style={{ fontSize: '1.2rem', color: 'var(--accent-cyan)' }}>±{forecastData.mae_kwh} kWh</strong>
-            </div>
+
+            <button
+              onClick={speakForecastInfo}
+              className="btn btn-secondary"
+              style={{ padding: '0.75rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              title="Listen to Forecast Voice Summary"
+            >
+              <Volume2 size={16} color="var(--accent-cyan)" />
+              Listen
+            </button>
           </div>
         </div>
       </div>

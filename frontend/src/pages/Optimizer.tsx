@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { SlidersHorizontal, Zap, DollarSign, TrendingDown, HelpCircle, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
+import { SlidersHorizontal, Zap, DollarSign, TrendingDown, HelpCircle, CheckCircle2, AlertTriangle, ArrowRight, Volume2 } from 'lucide-react';
 import { api } from '../api/client';
 import { OptimizationResponse } from '../types';
+import { speakPowerOptix } from '../utils/audioAssistant';
 
 interface OptimizerProps {
   onDataChanged: () => void;
@@ -12,13 +13,21 @@ export const Optimizer: React.FC<OptimizerProps> = ({ onDataChanged }) => {
   const [optResult, setOptResult] = useState<OptimizationResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const runOptimizer = async (budgetVal?: number) => {
+  const runOptimizer = async (budgetVal?: number, isUserAction = false) => {
     try {
       setLoading(true);
       const b = budgetVal !== undefined ? budgetVal : targetBudget;
       const res = await api.runOptimization(b);
       setOptResult(res);
       onDataChanged();
+
+      if (isUserAction && res) {
+        const saved = Math.round(res.monthly_money_saved || 0);
+        const msg = saved > 0
+          ? `Optimization completed. You could save approximately ${saved} rupees.`
+          : `Optimization completed. Your recommended plan can reduce energy cost.`;
+        speakPowerOptix(msg, 'MEDIUM', 'opt_success_' + Date.now(), 'success');
+      }
     } catch (err) {
       alert(`Optimization error: ${err}`);
     } finally {
@@ -27,8 +36,17 @@ export const Optimizer: React.FC<OptimizerProps> = ({ onDataChanged }) => {
   };
 
   useEffect(() => {
-    runOptimizer(3000);
+    runOptimizer(3000, false);
   }, []);
+
+  const speakOptResult = () => {
+    if (!optResult) return;
+    const saved = Math.round(optResult.monthly_money_saved || 0);
+    const msg = saved > 0
+      ? `Optimization completed. You could save approximately ${saved} rupees.`
+      : `Optimization completed. Your recommended plan can reduce energy cost.`;
+    speakPowerOptix(msg, 'MEDIUM', 'opt_listen_' + Date.now(), 'success');
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -65,10 +83,22 @@ export const Optimizer: React.FC<OptimizerProps> = ({ onDataChanged }) => {
               </div>
             </div>
 
-            <button onClick={() => runOptimizer()} disabled={loading} className="btn btn-primary" style={{ padding: '0.75rem 1.5rem' }}>
+            <button onClick={() => runOptimizer(undefined, true)} disabled={loading} className="btn btn-primary" style={{ padding: '0.75rem 1.5rem' }}>
               <SlidersHorizontal size={18} />
               {loading ? 'Solving LP...' : 'Execute Optimizer'}
             </button>
+
+            {optResult && (
+              <button
+                onClick={speakOptResult}
+                className="btn btn-secondary"
+                style={{ padding: '0.75rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                title="Listen to Optimization Result Voice Summary"
+              >
+                <Volume2 size={16} color="var(--accent-cyan)" />
+                Listen
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Zap, DollarSign, PiggyBank, Leaf, RefreshCw } from 'lucide-react';
+import { Activity, Zap, DollarSign, PiggyBank, Leaf, RefreshCw, Volume2 } from 'lucide-react';
 import { api } from '../api/client';
 import { ApplianceAnalyticsSummary, WhatIfResponse, Appliance } from '../types';
+import { speakPowerOptix } from '../utils/audioAssistant';
 
 interface SimulatorProps {
   onDataChanged: () => void;
@@ -14,6 +15,14 @@ export const Simulator: React.FC<SimulatorProps> = ({ onDataChanged }) => {
   const [whatIfResult, setWhatIfResult] = useState<WhatIfResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const speakWhatIfResult = (res: WhatIfResponse) => {
+    const saved = Math.round(res.monthly_saving || 0);
+    const msg = saved > 0
+      ? `Good news. Your simulated plan can save approximately ${saved} rupees.`
+      : `Scenario analysis completed. Your simulated plan shows potential savings.`;
+    speakPowerOptix(msg, 'MEDIUM', 'what_if_evt', 'success');
+  };
+
   useEffect(() => {
     async function initSimulator() {
       try {
@@ -24,7 +33,7 @@ export const Simulator: React.FC<SimulatorProps> = ({ onDataChanged }) => {
           const defaultApp = res.appliances.find(a => a.name.toLowerCase().includes('ac')) || res.appliances[0];
           setSelectedAppId(defaultApp.id);
           setSliderHours(Math.max(1, defaultApp.hours_per_day - 2));
-          fetchWhatIf(defaultApp.id, Math.max(1, defaultApp.hours_per_day - 2));
+          fetchWhatIf(defaultApp.id, Math.max(1, defaultApp.hours_per_day - 2), false);
         }
       } catch (err) {
         console.error('Error initializing simulator:', err);
@@ -35,10 +44,13 @@ export const Simulator: React.FC<SimulatorProps> = ({ onDataChanged }) => {
     initSimulator();
   }, []);
 
-  const fetchWhatIf = async (appId: number, hours: number) => {
+  const fetchWhatIf = async (appId: number, hours: number, isUserAction = true) => {
     try {
       const res = await api.runWhatIf(appId, hours);
       setWhatIfResult(res);
+      if (isUserAction && res) {
+        speakWhatIfResult(res);
+      }
     } catch (err) {
       console.error('Error running What-If calculation:', err);
     }
@@ -154,41 +166,64 @@ export const Simulator: React.FC<SimulatorProps> = ({ onDataChanged }) => {
 
       {/* DYNAMIC CALCULATED RESULTS PANEL */}
       {whatIfResult && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem' }}>
-          <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-cyan)' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Energy Saved</span>
-            <h3 className="font-mono" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--accent-cyan)', marginTop: '0.3rem' }}>
-              ⚡ {whatIfResult.kwh_saved >= 0 ? `${whatIfResult.kwh_saved} kWh` : `${whatIfResult.kwh_saved} kWh`}
-            </h3>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-              Old: {whatIfResult.old_kwh} kWh → New: {whatIfResult.new_kwh} kWh
-            </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 800 }}>Simulated Impact & Financial Projections</h3>
+            <button
+              onClick={() => speakWhatIfResult(whatIfResult)}
+              className="btn btn-secondary"
+              style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              title="Listen to What-If Simulation Results"
+            >
+              <Volume2 size={15} color="var(--accent-cyan)" />
+              Listen
+            </button>
           </div>
 
-          <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-emerald)' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Monthly Money Saving</span>
-            <h3 className="font-mono" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--accent-emerald)', marginTop: '0.3rem' }}>
-              💰 ₹{whatIfResult.monthly_saving.toLocaleString()}
-            </h3>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-              Old bill: ₹{whatIfResult.old_bill} → New: ₹{whatIfResult.new_bill}
-            </span>
-          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
+            <div className="glass-panel" style={{ padding: '1.1rem', borderLeft: '4px solid var(--accent-cyan)' }}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Energy Saved</span>
+              <h3 className="font-mono" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-cyan)', marginTop: '0.3rem' }}>
+                ⚡ {whatIfResult.kwh_saved >= 0 ? `${whatIfResult.kwh_saved} kWh` : `${whatIfResult.kwh_saved} kWh`}
+              </h3>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                ({(whatIfResult.kwh_saved / 30).toFixed(2)} kWh/day)
+              </span>
+            </div>
 
-          <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-amber)' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Annual Money Saving</span>
-            <h3 className="font-mono" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--accent-amber)', marginTop: '0.3rem' }}>
-              💵 ₹{whatIfResult.annual_saving.toLocaleString()}
-            </h3>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>12-month compound savings</span>
-          </div>
+            <div className="glass-panel" style={{ padding: '1.1rem', borderLeft: '4px solid var(--accent-emerald)' }}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Daily Saving</span>
+              <h3 className="font-mono" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-emerald)', marginTop: '0.3rem' }}>
+                💰 ₹{(whatIfResult.monthly_saving / 30).toFixed(2)} / day
+              </h3>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Daily electricity saving</span>
+            </div>
 
-          <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-purple)' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Estimated CO₂ Reduction</span>
-            <h3 className="font-mono" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--accent-purple)', marginTop: '0.3rem' }}>
-              🌱 {whatIfResult.co2_reduction_kg_year} kg/yr
-            </h3>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Environmental footprint impact</span>
+            <div className="glass-panel" style={{ padding: '1.1rem', borderLeft: '4px solid var(--accent-emerald)' }}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Monthly Money Saving</span>
+              <h3 className="font-mono" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-emerald)', marginTop: '0.3rem' }}>
+                ₹{whatIfResult.monthly_saving.toLocaleString()}
+              </h3>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                ₹{whatIfResult.old_bill} → ₹{whatIfResult.new_bill}
+              </span>
+            </div>
+
+            <div className="glass-panel" style={{ padding: '1.1rem', borderLeft: '4px solid var(--accent-amber)' }}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Annual Money Saving</span>
+              <h3 className="font-mono" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-amber)', marginTop: '0.3rem' }}>
+                💵 ₹{whatIfResult.annual_saving.toLocaleString()}
+              </h3>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>12-month compound savings</span>
+            </div>
+
+            <div className="glass-panel" style={{ padding: '1.1rem', borderLeft: '4px solid var(--accent-purple)' }}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Estimated CO₂ Impact</span>
+              <h3 className="font-mono" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-purple)', marginTop: '0.3rem' }}>
+                🌱 {whatIfResult.co2_reduction_kg_year} kg/yr
+              </h3>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Environmental footprint</span>
+            </div>
           </div>
         </div>
       )}

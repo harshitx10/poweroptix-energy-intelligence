@@ -1,6 +1,7 @@
-import React from 'react';
-import { Sun, Moon, Zap, ShieldCheck, Target } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sun, Moon, Zap, ShieldCheck, Target, Volume2, VolumeX } from 'lucide-react';
 import { DashboardSummary } from '../types';
+import { isAudioAssistantEnabled, setAudioAssistantEnabled } from '../utils/audioAssistant';
 
 interface NavbarProps {
   activeTab: string;
@@ -10,6 +11,17 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, theme, setTheme, summary }) => {
+  const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
+
+  useEffect(() => {
+    setAudioEnabled(isAudioAssistantEnabled());
+  }, []);
+
+  const handleToggleAudio = () => {
+    const newState = setAudioAssistantEnabled(!audioEnabled);
+    setAudioEnabled(newState);
+  };
+
   const getTabTitle = (tab: string) => {
     switch (tab) {
       case 'dashboard': return 'Executive Smart Energy Dashboard';
@@ -45,7 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, theme, setTheme, summ
         </p>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         {/* Quick Stats Badges */}
         {summary && (
           <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -64,6 +76,35 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, theme, setTheme, summ
             </div>
           </div>
         )}
+
+        {/* Audio Assistant Toggle */}
+        <button
+          onClick={handleToggleAudio}
+          className={`btn ${audioEnabled ? 'btn-primary' : 'btn-secondary'}`}
+          style={{
+            padding: '0.45rem 0.85rem',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '0.8rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            transition: 'all 0.2s ease'
+          }}
+          title={audioEnabled ? 'Audio Assistant ON (Click to Mute)' : 'Audio Assistant OFF (Click to Enable)'}
+          aria-label="Toggle Audio Assistant"
+        >
+          {audioEnabled ? (
+            <>
+              <Volume2 size={16} color="#ffffff" />
+              <span style={{ fontWeight: 600 }}>Audio ON</span>
+            </>
+          ) : (
+            <>
+              <VolumeX size={16} color="var(--text-muted)" />
+              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Audio OFF</span>
+            </>
+          )}
+        </button>
 
         {/* Theme Toggle */}
         <button

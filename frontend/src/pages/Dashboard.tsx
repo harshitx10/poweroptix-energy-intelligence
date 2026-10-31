@@ -9,7 +9,10 @@ import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  Calendar,
+  Activity,
+  TrendingUp
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -26,9 +29,12 @@ import {
 } from 'chart.js';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import { api } from '../api/client';
-import { DashboardSummary, ApplianceAnalyticsSummary, RecommendationsResponse, EfficiencyScoreResponse } from '../types';
+import { DashboardSummary, ApplianceAnalyticsSummary, RecommendationsResponse, EfficiencyScoreResponse, DailyEnergyData } from '../types';
 import { KpiCard } from '../components/KpiCard';
 import { EfficiencyGauge } from '../components/EfficiencyGauge';
+
+import { speakPowerOptix, evaluateEnergyAudioEvents } from '../utils/audioAssistant';
+import { Volume2 } from 'lucide-react';
 
 ChartJS.register(
   CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler
@@ -44,20 +50,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, summary, ref
   const [analytics, setAnalytics] = useState<ApplianceAnalyticsSummary | null>(null);
   const [recs, setRecs] = useState<RecommendationsResponse | null>(null);
   const [scoreData, setScoreData] = useState<EfficiencyScoreResponse | null>(null);
+  const [dailyData, setDailyData] = useState<DailyEnergyData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadDashboardData() {
       try {
         setLoading(true);
-        const [appData, recData, scoreRes] = await Promise.all([
+        const [appData, recData, scoreRes, dailyRes] = await Promise.all([
           api.getAppliances(),
           api.getRecommendations(),
-          api.getEfficiencyScore()
+          api.getEfficiencyScore(),
+          api.getDailyEnergy()
         ]);
         setAnalytics(appData);
         setRecs(recData);
         setScoreData(scoreRes);
+        setDailyData(dailyRes);
+
+        // 3-Level Audio Evaluation (🟢 GREEN / 🟡 YELLOW / 🔴 RED)
+        evaluateEnergyAudioEvents({
+          todayVsAvgPct: dailyRes?.today_vs_avg_pct,
+          isOverBudget: summary?.is_over_budget,
+          monthlySaving: dailyRes?.potential_monthly_saving,
+          efficiencyScore: scoreRes?.overall_score
+        });
       } catch (err) {
         console.error('Error loading dashboard data:', err);
       } finally {
@@ -65,7 +82,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, summary, ref
       }
     }
     loadDashboardData();
-  }, []);
+  }, [summary?.is_over_budget]);
 
   if (loading || !summary) {
     return (
@@ -74,6 +91,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, summary, ref
       </div>
     );
   }
+
+  // Daily Trend Chart Data
+  const trendLabels = dailyData ? dailyData.daily_trend_data.map(d => d.day_name) : [];
+  const trendCosts = dailyData ? dailyData.daily_trend_data.map(d => d.daily_cost) : [];
+  const trendKwhs = dailyData ? dailyData.daily_trend_data.map(d => d.daily_kwh) : [];
+
+  const dailyTrendChartData = {
+    labels: trendLabels,
+    datasets: [
+      {
+        label: 'Daily Cost (₹/day)',
+        data: trendCosts,
+        borderColor: '#06b6d4',
+        backgroundColor: 'rgba(6, 182, 212, 0.15)',
+        fill: true,
+        tension: 0.4,
+        yAxisID: 'y'
+      },
+      {
+        label: 'Daily Consumption (kWh/day)',
+        data: trendKwhs,
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.05)',
+        borderDash: [4, 4],
+        fill: false,
+        tension: 0.4,
+        yAxisID: 'y1'
+      }
+    ]
+  };
 
   // Chart 1: Donut Chart - Consumption Distribution by Category
   const catLabels = analytics ? Object.keys(analytics.category_breakdown) : [];
@@ -103,10 +150,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, summary, ref
     }]
   };
 
+  // Daily Status Badge
+  const statusType = dailyData?.daily_status === 'HIGH' ? 'danger' : dailyData?.daily_status === 'LOW' ? 'success' : 'medium';
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       
-      {/* HERO HERO SECTION */}
+      {/* HERO SECTION */}
       <div className="glass-panel" style={{
         padding: '2rem',
         background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%)',
@@ -126,7 +176,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, summary, ref
             </h2>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', maxWidth: '750px' }}>
               Current monthly household usage is <strong style={{ color: 'var(--accent-emerald)' }}>{summary.monthly_consumption_kwh} kWh</strong> with an estimated bill of <strong style={{ color: 'var(--text-primary)' }}>{summary.currency}{summary.estimated_monthly_bill.toLocaleString()}</strong>.
-              SciPy linear optimization can reduce consumption to <strong style={{ color: 'var(--accent-cyan)' }}>{summary.optimized_monthly_kwh} kWh</strong>, saving up to <strong style={{ color: 'var(--accent-emerald)' }}>{summary.currency}{summary.potential_monthly_saving.toLocaleString()}/month</strong> ({summary.currency}{summary.potential_annual_saving.toLocaleString()}/year).
+              Average daily cost is <strong style={{ color: 'var(--accent-cyan)' }}>{summary.currency}{(dailyData?.average_daily_cost ?? roundVal(summary.estimated_monthly_bill / 30)).toFixed(2)}/day</strong>.
+              SciPy LP optimization can save <strong style={{ color: 'var(--accent-emerald)' }}>{summary.currency}{(dailyData?.potential_daily_saving ?? roundVal(summary.potential_monthly_saving / 30)).toFixed(2)}/day</strong> ({summary.currency}{summary.potential_monthly_saving.toLocaleString()}/month).
             </p>
           </div>
 
@@ -143,18 +194,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, summary, ref
         </div>
       </div>
 
-      {/* TOP KPI CARDS GRID */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
+      {/* DAILY COST & CONSUMPTION KPI CARDS GRID */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
         <KpiCard
-          title="Monthly Consumption"
-          value={`${summary.monthly_consumption_kwh} kWh`}
-          subtext="Calculated from active appliances"
-          icon={Zap}
-          color="var(--accent-emerald)"
-          badgeText="Active"
-        />
-        <KpiCard
-          title="Estimated Monthly Bill"
+          title="Monthly Electricity Bill"
           value={`${summary.currency}${summary.estimated_monthly_bill.toLocaleString()}`}
           subtext={`Annual: ${summary.currency}${summary.estimated_annual_bill.toLocaleString()}`}
           icon={DollarSign}
@@ -162,46 +205,141 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, summary, ref
           badgeText={summary.is_over_budget ? 'Over Budget' : 'Within Budget'}
           badgeType={summary.is_over_budget ? 'danger' : 'success'}
         />
+
         <KpiCard
-          title="Optimized Consumption"
-          value={`${summary.optimized_monthly_kwh} kWh`}
-          subtext={`Potential reduction: ${roundVal(summary.monthly_consumption_kwh - summary.optimized_monthly_kwh)} kWh`}
-          icon={TrendingDown}
+          title="Average Daily Cost"
+          value={`${summary.currency}${(dailyData?.average_daily_cost ?? roundVal(summary.estimated_monthly_bill / 30)).toFixed(2)} / day`}
+          subtext="Monthly Bill / 30 Billing Days"
+          icon={Calendar}
           color="var(--accent-cyan)"
-          badgeText="SciPy Linprog"
+          badgeText="Daily Avg"
         />
+
         <KpiCard
-          title="Potential Monthly Saving"
-          value={`${summary.currency}${summary.potential_monthly_saving.toLocaleString()}`}
-          subtext={`Annual saving: ${summary.currency}${summary.potential_annual_saving.toLocaleString()}`}
-          icon={PiggyBank}
+          title="Average Daily Consumption"
+          value={`${(dailyData?.average_daily_consumption_kwh ?? roundVal(summary.monthly_consumption_kwh / 30)).toFixed(2)} kWh/day`}
+          subtext="Monthly Load / 30 Days"
+          icon={Zap}
           color="var(--accent-emerald)"
-          badgeText="Available"
         />
+
         <KpiCard
-          title="Estimated CO₂ Reduction"
-          value={`${summary.co2_reduction_kg} kg/yr`}
-          subtext="0.85 kg CO₂/kWh grid factor"
-          icon={Leaf}
-          color="var(--accent-emerald)"
+          title="Today's Estimated Cost"
+          value={`${summary.currency}${(dailyData?.today_estimated_cost ?? roundVal(summary.estimated_monthly_bill / 30)).toFixed(2)}`}
+          subtext="Estimated from active usage"
+          icon={Activity}
+          color="var(--accent-amber)"
+          badgeText={dailyData?.daily_status || 'NORMAL'}
+          badgeType={statusType as any}
+        />
+
+        <KpiCard
+          title="Today's Estimated Consumption"
+          value={`${(dailyData?.today_consumption_kwh ?? roundVal(summary.monthly_consumption_kwh / 30)).toFixed(2)} kWh`}
+          subtext="Appliance load & standby"
+          icon={Zap}
+          color="var(--accent-cyan)"
+        />
+
+        <KpiCard
+          title="Projected Monthly Bill"
+          value={`${summary.currency}${(dailyData?.projected_monthly_bill ?? summary.estimated_monthly_bill).toLocaleString()}`}
+          subtext="Based on current daily usage"
+          icon={TrendingUp}
+          color="var(--accent-rose)"
+          badgeText="Projected"
         />
       </div>
 
-      {/* CHARTS & EFFICIENCY ROW */}
+      {/* TODAY VS AVERAGE COMPARISON & DAILY POTENTIAL SAVINGS BANNER */}
+      {dailyData && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+          <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: `4px solid ${dailyData.today_vs_avg_diff > 0 ? 'var(--accent-rose)' : 'var(--accent-emerald)'}` }}>
+            <div>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>TODAY vs AVERAGE DAILY COST</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.25rem' }}>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>₹{dailyData.today_estimated_cost.toFixed(2)}</h3>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>vs Avg ₹{dailyData.average_daily_cost.toFixed(2)}/day</span>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: dailyData.today_vs_avg_diff > 0 ? 'var(--accent-rose)' : 'var(--accent-emerald)', marginTop: '0.25rem', fontWeight: 700 }}>
+                {dailyData.today_vs_avg_diff > 0 ? `+₹${dailyData.today_vs_avg_diff.toFixed(2)} (+${dailyData.today_vs_avg_pct}%) above daily average` : `${dailyData.today_vs_avg_pct}% below daily average`}
+              </p>
+            </div>
+            <span className={`badge badge-${statusType}`} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+              {dailyData.daily_status_label}
+            </span>
+          </div>
+
+          <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid var(--accent-emerald)' }}>
+            <div>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>POTENTIAL DAILY OPTIMIZATION SAVINGS</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.25rem' }}>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-emerald)' }}>₹{dailyData.potential_daily_saving.toFixed(2)} / day</h3>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>({dailyData.potential_daily_kwh_saved} kWh/day)</span>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                SciPy LP solver optimizes hours to save <strong>₹{dailyData.potential_monthly_saving.toLocaleString()}/month</strong> (₹{dailyData.potential_annual_saving.toLocaleString()}/year).
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button
+                onClick={() => {
+                  const saved = Math.round(dailyData.potential_monthly_saving || 0);
+                  const pct = Math.round(dailyData.today_vs_avg_pct);
+                  if (pct >= 10) {
+                    speakPowerOptix(`Warning. Today's energy consumption is approximately ${pct} percent above your daily average.`, 'HIGH', 'dash_listen_warn_' + Date.now(), 'warning');
+                  } else if (saved > 0) {
+                    speakPowerOptix(`Good news. Your optimized energy plan can save approximately ${saved} rupees.`, 'MEDIUM', 'dash_listen_good_' + Date.now(), 'success');
+                  } else {
+                    speakPowerOptix('PowerOptix dashboard loaded. System operating within normal daily parameters.', 'LOW', 'dash_listen_norm_' + Date.now(), 'success');
+                  }
+                }}
+                className="btn btn-secondary"
+                style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                title="Listen to Today's Energy Intelligence Brief"
+              >
+                <Volume2 size={15} color="var(--accent-emerald)" />
+                Listen
+              </button>
+              <button onClick={() => setActiveTab('optimizer')} className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}>
+                Optimize Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DAILY TREND CHART & CATEGORY DONUT ROW */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
-        {/* Cost Breakdown Chart */}
+        {/* Daily Cost & Consumption Trend Chart */}
         <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Top Appliance Monthly Electricity Cost (₹)</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>7-Day Daily Electricity Cost & Load Trend</h3>
           <div style={{ height: '260px' }}>
-            <Bar
-              data={appBarData}
+            <Line
+              data={dailyTrendChartData}
               options={{
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'top', labels: { color: '#9ca3af', font: { size: 11 } } } },
                 scales: {
                   x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } },
-                  y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } }
+                  y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: { display: true, text: 'Cost (₹/day)', color: '#06b6d4' },
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#06b6d4' }
+                  },
+                  y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: { display: true, text: 'Energy (kWh/day)', color: '#10b981' },
+                    grid: { drawOnChartArea: false },
+                    ticks: { color: '#10b981' }
+                  }
                 }
               }}
             />

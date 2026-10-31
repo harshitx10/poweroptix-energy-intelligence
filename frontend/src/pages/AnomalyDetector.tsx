@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, ShieldCheck, Activity, LineChart } from 'lucide-react';
+import { AlertCircle, ShieldCheck, Activity, LineChart, Volume2 } from 'lucide-react';
 import { api } from '../api/client';
+import { speakPowerOptix } from '../utils/audioAssistant';
 
 export const AnomalyDetector: React.FC = () => {
   const [anomData, setAnomData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const speakAnomalyInfo = (count: number) => {
+    if (count > 0) {
+      speakPowerOptix('Attention. An unusual energy consumption pattern was detected.', 'HIGH', 'anomaly_detected_evt', 'warning');
+    } else {
+      speakPowerOptix('Anomaly check completed. No abnormal energy consumption patterns were detected.', 'MEDIUM', 'anomaly_clean_evt', 'success');
+    }
+  };
 
   useEffect(() => {
     async function loadAnomalies() {
@@ -12,6 +21,9 @@ export const AnomalyDetector: React.FC = () => {
         setLoading(true);
         const res = await api.runAnomalyDetection();
         setAnomData(res);
+        if (res && res.anomalies_detected_count > 0) {
+          speakAnomalyInfo(res.anomalies_detected_count);
+        }
       } catch (err) {
         console.error('Error running anomaly detection:', err);
       } finally {
@@ -44,11 +56,23 @@ export const AnomalyDetector: React.FC = () => {
             </p>
           </div>
 
-          <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.85rem 1.25rem', borderRadius: 'var(--radius-md)', textAlign: 'right' }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Anomalies Flagged</span>
-            <strong className="font-mono" style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent-rose)' }}>
-              {anomData.anomalies_detected_count} Outliers
-            </strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.85rem 1.25rem', borderRadius: 'var(--radius-md)', textAlign: 'right' }}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Anomalies Flagged</span>
+              <strong className="font-mono" style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent-rose)' }}>
+                {anomData.anomalies_detected_count} Outliers
+              </strong>
+            </div>
+
+            <button
+              onClick={() => speakAnomalyInfo(anomData.anomalies_detected_count)}
+              className="btn btn-secondary"
+              style={{ padding: '0.75rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              title="Listen to Anomaly Alert"
+            >
+              <Volume2 size={16} color="var(--accent-rose)" />
+              Listen
+            </button>
           </div>
         </div>
       </div>

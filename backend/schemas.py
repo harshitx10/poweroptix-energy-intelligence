@@ -100,6 +100,12 @@ class ApplianceAnalyticsItem(BaseModel):
     rated_power_w: float
     quantity: int
     hours_per_day: float
+    days_per_month: int = 30
+    standby_power_w: float = 0.0
+    priority: str = "Medium"
+    min_hours_per_day: float = 1.0
+    max_hours_per_day: float = 24.0
+    is_active: bool = True
     monthly_kwh: float
     monthly_cost: float
     percentage_contribution: float
@@ -252,13 +258,44 @@ class GoalResponse(BaseModel):
     budget_met: bool
     is_active: bool
 
+class DailyEnergyResponse(BaseModel):
+    date: str
+    billing_period_days: int
+    monthly_consumption_kwh: float
+    monthly_bill: float
+    average_daily_consumption_kwh: float
+    average_daily_cost: float
+    today_consumption_kwh: float
+    today_estimated_cost: float
+    projected_monthly_bill: float
+    today_vs_avg_diff: float
+    today_vs_avg_pct: float
+    daily_status: str
+    daily_status_label: str
+    potential_daily_kwh_saved: float
+    potential_daily_saving: float
+    potential_monthly_saving: float
+    potential_annual_saving: float
+    top_daily_consumers: List[Dict[str, Any]]
+    appliance_daily_breakdown: List[Dict[str, Any]]
+    daily_trend_data: List[Dict[str, Any]]
+    currency: str
+
 # --- Dashboard Summary Schema ---
 class DashboardSummaryResponse(BaseModel):
     total_appliances: int
     monthly_consumption_kwh: float
     estimated_monthly_bill: float
     estimated_annual_bill: float
+    average_daily_consumption_kwh: float
+    average_daily_cost: float
+    today_consumption_kwh: float
+    today_estimated_cost: float
+    projected_monthly_bill: float
+    today_vs_avg_pct: float
+    daily_status: str
     optimized_monthly_kwh: float
+    potential_daily_saving: float
     potential_monthly_saving: float
     potential_annual_saving: float
     co2_reduction_kg: float

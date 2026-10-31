@@ -26,8 +26,28 @@ def answer_natural_language_query(query: str, appliances: list, target_budget: f
     bill_res = calculate_electricity_bill(total_kwh)
     current_bill = bill_res["total_monthly_bill"]
 
+    # 0. Daily cost & daily consumption queries
+    if "day" in q or "daily" in q or "per day" in q or "today" in q or "projected" in q:
+        avg_daily_kwh = round(total_kwh / 30.0, 2)
+        avg_daily_cost = round(current_bill / 30.0, 2)
+        eff_rate = bill_res["energy_charge"] / max(1.0, total_kwh)
+        
+        if "ac" in q or "air conditioner" in q or "cooling" in q:
+            ac_item = next((i for i in items if "ac" in i["name"].lower() or "cooling" in i["category"].lower()), items[0])
+            ac_daily_kwh = round(ac_item["total_kwh"] / 30.0, 2)
+            ac_daily_cost = round(ac_daily_kwh * eff_rate, 2)
+            answer = f"Your {ac_item['name']} consumes approximately {ac_daily_kwh} kWh/day, costing ₹{ac_daily_cost} per day (₹{ac_item['total_kwh']} kWh/month)."
+        elif "save" in q or "saving" in q:
+            opt_res = optimize_appliance_usage(appliances, target_budget=target_budget)
+            daily_saving = round(opt_res['monthly_money_saved'] / 30.0, 2)
+            answer = f"By running SciPy LP optimization, you can save approximately ₹{daily_saving}/day (₹{opt_res['monthly_money_saved']}/month, ₹{opt_res['annual_money_saved']}/year)."
+        elif "projected" in q or "continue" in q:
+            answer = f"Based on your current average daily cost of ₹{avg_daily_cost}/day ({avg_daily_kwh} kWh/day), your projected monthly electricity bill is ₹{current_bill}."
+        else:
+            answer = f"Your average daily electricity consumption is {avg_daily_kwh} kWh/day with an average daily cost of ₹{avg_daily_cost}/day. Today's estimated consumption is {avg_daily_kwh} kWh (₹{avg_daily_cost})."
+
     # 1. "How much electricity does my AC consume?"
-    if "ac" in q or "air conditioner" in q or "cooling" in q:
+    elif "ac" in q or "air conditioner" in q or "cooling" in q:
         ac_item = next((i for i in items if "ac" in i["name"].lower() or "cooling" in i["category"].lower()), None)
         if ac_item:
             pct = round((ac_item["total_kwh"] / max(1.0, total_kwh)) * 100.0, 1)

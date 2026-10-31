@@ -19,6 +19,7 @@ from services.recommendation_engine import generate_smart_recommendations
 from services.waste_radar import detect_energy_waste
 from services.nl_assistant import answer_natural_language_query
 from services.peak_load_engine import calculate_peak_load_analytics
+from services.daily_energy_service import get_daily_energy_intelligence
 
 from ml.forecaster import train_ridge_forecaster
 from ml.anomaly_detector import detect_consumption_anomalies
@@ -100,6 +101,8 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     potential_annual_saving = opt_res["annual_money_saved"]
     co2_reduction_kg = opt_res["co2_reduction_kg"]
 
+    daily_intel = get_daily_energy_intelligence(db, billing_period_days=30)
+
     score_res = calculate_energy_efficiency_score(
         appliances, monthly_kwh, monthly_bill, target_budget=target_budget, optimized_kwh=opt_monthly_kwh
     )
@@ -113,7 +116,15 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
         "monthly_consumption_kwh": monthly_kwh,
         "estimated_monthly_bill": monthly_bill,
         "estimated_annual_bill": annual_bill,
+        "average_daily_consumption_kwh": daily_intel["average_daily_consumption_kwh"],
+        "average_daily_cost": daily_intel["average_daily_cost"],
+        "today_consumption_kwh": daily_intel["today_consumption_kwh"],
+        "today_estimated_cost": daily_intel["today_estimated_cost"],
+        "projected_monthly_bill": daily_intel["projected_monthly_bill"],
+        "today_vs_avg_pct": daily_intel["today_vs_avg_pct"],
+        "daily_status": daily_intel["daily_status"],
         "optimized_monthly_kwh": opt_monthly_kwh,
+        "potential_daily_saving": daily_intel["potential_daily_saving"],
         "potential_monthly_saving": potential_monthly_saving,
         "potential_annual_saving": potential_annual_saving,
         "co2_reduction_kg": co2_reduction_kg,
@@ -125,6 +136,11 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
         "top_consuming_appliance": top_name,
         "top_appliance_kwh": top_kwh
     }
+
+# 1B. DAILY ENERGY INTELLIGENCE ENDPOINT
+@app.get("/api/daily-energy", response_model=schemas.DailyEnergyResponse)
+def get_daily_energy(db: Session = Depends(get_db)):
+    return get_daily_energy_intelligence(db, billing_period_days=30)
 
 # 2. APPLIANCES CRUD
 @app.get("/api/appliances", response_model=schemas.ApplianceAnalyticsSummary)
@@ -145,8 +161,10 @@ def get_appliances(db: Session = Depends(get_db)):
     lowest_app = None
     lowest_kwh = float("inf") if appliances else 0.0
 
+    app_dict = {a.id: a for a in appliances}
     for item in consumption_res["items"]:
         app_id = item["appliance_id"]
+        db_app = app_dict.get(app_id)
         kwh = item["total_kwh"]
         cost = round(kwh * effective_rate, 2)
         pct = round((kwh / max(1.0, total_kwh)) * 100.0, 1)
@@ -168,6 +186,12 @@ def get_appliances(db: Session = Depends(get_db)):
             "rated_power_w": item["rated_power_w"],
             "quantity": item["quantity"],
             "hours_per_day": item["hours_per_day"],
+            "days_per_month": db_app.days_per_month if db_app else item.get("days_per_month", 30),
+            "standby_power_w": db_app.standby_power_w if db_app else item.get("standby_power_w", 0.0),
+            "priority": db_app.priority if db_app else "Medium",
+            "min_hours_per_day": db_app.min_hours_per_day if db_app else 1.0,
+            "max_hours_per_day": db_app.max_hours_per_day if db_app else 24.0,
+            "is_active": db_app.is_active if db_app else True,
             "monthly_kwh": kwh,
             "monthly_cost": cost,
             "percentage_contribution": pct

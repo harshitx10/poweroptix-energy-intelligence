@@ -1,6 +1,5 @@
 # POWEROPTIX — PROJECT STATUS & FINAL AUDIT REPORT
 
-### Academic Topic: #68 — Optimization Based Smart Expense Analysis System
 ### Official Title: PowerOptix — AI-Based Electricity Usage Optimizer
 ### Tagline: "See. Predict. Optimize. Save."
 

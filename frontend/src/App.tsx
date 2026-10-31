@@ -16,7 +16,6 @@ import { PaybackAnalyzer } from './pages/PaybackAnalyzer';
 import { SolarEvSimulator } from './pages/SolarEvSimulator';
 import { Recommendations } from './pages/Recommendations';
 import { Assistant } from './pages/Assistant';
-import { VivaMode } from './pages/VivaMode';
 import { SettingsPage } from './pages/Settings';
 import { PeakLoad } from './pages/PeakLoad';
 import { Report } from './pages/Report';
@@ -58,7 +57,7 @@ export function App() {
       case 'dashboard':
         return <Dashboard setActiveTab={setActiveTab} summary={summary} refreshSummary={fetchSummary} />;
       case 'appliances':
-        return <Appliances onDataChanged={fetchSummary} />;
+        return <Appliances onDataChanged={fetchSummary} setActiveTab={setActiveTab} />;
       case 'energy-dna':
         return <EnergyDna />;
       case 'analytics':
@@ -89,8 +88,6 @@ export function App() {
         return <Recommendations />;
       case 'assistant':
         return <Assistant />;
-      case 'viva-mode':
-        return <VivaMode />;
       case 'settings':
         return <SettingsPage onDataChanged={fetchSummary} />;
       default:

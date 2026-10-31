@@ -129,43 +129,54 @@ export const DigitalTwin: React.FC<DigitalTwinProps> = ({ onDataChanged }) => {
       </div>
 
       {/* CURRENT STATE VS SIMULATED STATE METRICS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem' }}>
-        <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-purple)' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Simulated Monthly Consumption</span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.4rem' }}>
-            <span className="font-mono" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-purple)' }}>{twinResult.simulated_kwh} kWh</span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>{twinResult.original_kwh} kWh</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
+        <div className="glass-panel" style={{ padding: '1.1rem', borderLeft: '4px solid var(--accent-purple)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Simulated Monthly Load</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginTop: '0.3rem' }}>
+            <span className="font-mono" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-purple)' }}>{twinResult.simulated_kwh} kWh</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>{twinResult.original_kwh} kWh</span>
           </div>
-          <span style={{ fontSize: '0.75rem', color: 'var(--accent-purple)', fontWeight: 700 }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--accent-purple)', fontWeight: 700 }}>
             {twinResult.kwh_saved >= 0 ? `⚡ -${twinResult.kwh_saved} kWh saved` : `⚡ +${Math.abs(twinResult.kwh_saved)} kWh increased`}
           </span>
         </div>
 
-        <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-emerald)' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Simulated Monthly Bill</span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.4rem' }}>
-            <span className="font-mono" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-emerald)' }}>₹{twinResult.simulated_bill.toLocaleString()}</span>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{twinResult.original_bill.toLocaleString()}</span>
+        <div className="glass-panel" style={{ padding: '1.1rem', borderLeft: '4px solid var(--accent-emerald)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Simulated Monthly Bill</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginTop: '0.3rem' }}>
+            <span className="font-mono" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-emerald)' }}>₹{twinResult.simulated_bill.toLocaleString()}</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{twinResult.original_bill.toLocaleString()}</span>
           </div>
-          <span style={{ fontSize: '0.75rem', color: 'var(--accent-emerald)', fontWeight: 700 }}>
-            💰 Save ₹{twinResult.monthly_money_saved.toLocaleString()}/month
+          <span style={{ fontSize: '0.72rem', color: 'var(--accent-emerald)', fontWeight: 700 }}>
+            💰 Save ₹{twinResult.monthly_money_saved.toLocaleString()}/mo
           </span>
         </div>
 
-        <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-cyan)' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Annual Money Saved</span>
-          <h3 className="font-mono" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-cyan)', marginTop: '0.4rem' }}>
-            ₹{twinResult.annual_money_saved.toLocaleString()} / year
-          </h3>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{twinResult.percentage_bill_change}% bill difference</span>
+        <div className="glass-panel" style={{ padding: '1.1rem', borderLeft: '4px solid var(--accent-cyan)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Daily Cost & Load</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginTop: '0.3rem' }}>
+            <span className="font-mono" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>₹{(twinResult.simulated_bill / 30).toFixed(2)}/day</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{(twinResult.original_bill / 30).toFixed(2)}</span>
+          </div>
+          <span style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>
+            {(twinResult.simulated_kwh / 30).toFixed(2)} kWh/day
+          </span>
         </div>
 
-        <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-amber)' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Estimated CO₂ Reduction</span>
-          <h3 className="font-mono" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-amber)', marginTop: '0.4rem' }}>
-            {twinResult.co2_reduction_kg} kg / year
+        <div className="glass-panel" style={{ padding: '1.1rem', borderLeft: '4px solid var(--accent-emerald)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Potential Daily Saving</span>
+          <h3 className="font-mono" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-emerald)', marginTop: '0.3rem' }}>
+            ₹{(twinResult.monthly_money_saved / 30).toFixed(2)} / day
           </h3>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Green energy impact</span>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>₹{twinResult.annual_money_saved.toLocaleString()}/year</span>
+        </div>
+
+        <div className="glass-panel" style={{ padding: '1.1rem', borderLeft: '4px solid var(--accent-amber)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>CO₂ Impact</span>
+          <h3 className="font-mono" style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-amber)', marginTop: '0.3rem' }}>
+            {twinResult.co2_reduction_kg} kg/yr
+          </h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Green energy reduction</span>
         </div>
       </div>
 

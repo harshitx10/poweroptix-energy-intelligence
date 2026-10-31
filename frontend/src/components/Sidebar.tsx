@@ -14,7 +14,6 @@ import {
   Sun,
   Sparkles,
   MessageSquare,
-  Award,
   FileText,
   BarChart2,
   Settings
@@ -44,7 +43,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     { id: 'reports', label: 'Report Center', icon: FileText },
     { id: 'recommendations', label: 'Smart Recommendations', icon: Sparkles },
     { id: 'assistant', label: 'Natural Language AI', icon: MessageSquare },
-    { id: 'viva-mode', label: 'Viva & Methodology', icon: Award, highlight: true },
     { id: 'settings', label: 'Tariff & Settings', icon: Settings },
   ];
 
@@ -128,8 +126,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
 
       {/* Footer Info */}
       <div style={{ padding: '0.85rem 1rem', borderTop: '1px solid var(--border-color)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-        <p style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>PowerOptix Capstone Platform</p>
-        <p>Topic #68 — Smart Expense Optimization</p>
+        <p style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>PowerOptix Intelligence Platform</p>
+        <p>AI-Based Energy Optimization</p>
       </div>
     </aside>
   );

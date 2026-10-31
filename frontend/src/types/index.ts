@@ -18,12 +18,64 @@ export interface Appliance {
 
 export type ApplianceCategory = 'Cooling' | 'Heating' | 'Entertainment' | 'Kitchen' | 'Lighting' | 'Laundry' | 'Misc' | 'General';
 
+export interface DailyEnergyData {
+  date: string;
+  billing_period_days: number;
+  monthly_consumption_kwh: number;
+  monthly_bill: number;
+  average_daily_consumption_kwh: number;
+  average_daily_cost: number;
+  today_consumption_kwh: number;
+  today_estimated_cost: number;
+  projected_monthly_bill: number;
+  today_vs_avg_diff: number;
+  today_vs_avg_pct: number;
+  daily_status: 'LOW' | 'NORMAL' | 'HIGH';
+  daily_status_label: string;
+  potential_daily_kwh_saved: number;
+  potential_daily_saving: number;
+  potential_monthly_saving: number;
+  potential_annual_saving: number;
+  top_daily_consumers: Array<{
+    appliance_id?: number;
+    name: string;
+    category: string;
+    daily_kwh: number;
+    daily_cost: number;
+    percentage_daily: number;
+  }>;
+  appliance_daily_breakdown: Array<{
+    appliance_id?: number;
+    name: string;
+    category: string;
+    daily_kwh: number;
+    daily_cost: number;
+    percentage_daily: number;
+  }>;
+  daily_trend_data: Array<{
+    date: string;
+    day_name: string;
+    daily_kwh: number;
+    daily_cost: number;
+    is_today: boolean;
+  }>;
+  currency: string;
+}
+
 export interface DashboardSummary {
   total_appliances: number;
   monthly_consumption_kwh: number;
   estimated_monthly_bill: number;
   estimated_annual_bill: number;
+  average_daily_consumption_kwh?: number;
+  average_daily_cost?: number;
+  today_consumption_kwh?: number;
+  today_estimated_cost?: number;
+  projected_monthly_bill?: number;
+  today_vs_avg_pct?: number;
+  daily_status?: 'LOW' | 'NORMAL' | 'HIGH';
   optimized_monthly_kwh: number;
+  potential_daily_saving?: number;
   potential_monthly_saving: number;
   potential_annual_saving: number;
   co2_reduction_kg: number;

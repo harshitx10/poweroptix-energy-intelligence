@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Zap, AlertTriangle, ShieldCheck, Clock } from 'lucide-react';
+import { Activity, Zap, AlertTriangle, ShieldCheck, Clock, Volume2 } from 'lucide-react';
 import { api } from '../api/client';
+import { speakPowerOptix } from '../utils/audioAssistant';
 
 export const PeakLoad: React.FC = () => {
   const [peakData, setPeakData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const speakPeakInfo = (data: any) => {
+    if (data && (data.peak_risk_status?.toLowerCase().includes('high') || data.coincident_peak_kw > 3.0)) {
+      speakPowerOptix('Peak load detected. Consider shifting some appliance usage.', 'HIGH', 'peak_load_alert_evt', 'warning');
+    } else {
+      speakPowerOptix('Peak load analysis completed. Grid demand is within normal threshold.', 'MEDIUM', 'peak_load_normal_evt', 'success');
+    }
+  };
 
   useEffect(() => {
     async function loadPeak() {
@@ -12,6 +21,9 @@ export const PeakLoad: React.FC = () => {
         setLoading(true);
         const res = await fetch('http://localhost:8001/api/peak-load').then(r => r.json());
         setPeakData(res);
+        if (res && (res.peak_risk_status?.toLowerCase().includes('high') || res.coincident_peak_kw > 3.0)) {
+          speakPeakInfo(res);
+        }
       } catch (err) {
         console.error('Error fetching peak load:', err);
       } finally {
@@ -44,11 +56,23 @@ export const PeakLoad: React.FC = () => {
             </p>
           </div>
 
-          <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.85rem 1.25rem', borderRadius: 'var(--radius-md)', textAlign: 'right' }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Peak Risk Status</span>
-            <strong style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-rose)' }}>
-              {peakData.peak_risk_status}
-            </strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.85rem 1.25rem', borderRadius: 'var(--radius-md)', textAlign: 'right' }}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Peak Risk Status</span>
+              <strong style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-rose)' }}>
+                {peakData.peak_risk_status}
+              </strong>
+            </div>
+
+            <button
+              onClick={() => speakPeakInfo(peakData)}
+              className="btn btn-secondary"
+              style={{ padding: '0.75rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              title="Listen to Peak Load Summary"
+            >
+              <Volume2 size={16} color="var(--accent-amber)" />
+              Listen
+            </button>
           </div>
         </div>
       </div>

@@ -29,6 +29,8 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
 export const api = {
   getDashboardSummary: () => fetchJson<DashboardSummary>(`${API_BASE}/dashboard`),
 
+  getDailyEnergy: () => fetchJson<import('../types').DailyEnergyData>(`${API_BASE}/daily-energy`),
+
   getAppliances: () => fetchJson<ApplianceAnalyticsSummary>(`${API_BASE}/appliances`),
 
   createAppliance: (app: Partial<Appliance>) =>
@@ -108,6 +110,4 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ query }),
     }),
-
-  getVivaMetrics: () => fetchJson<any>(`${API_BASE}/viva-metrics`),
 };

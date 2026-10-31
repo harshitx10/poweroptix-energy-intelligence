@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Save, RefreshCw, AlertCircle } from 'lucide-react';
+import { Settings as SettingsIcon, Save, RefreshCw, AlertCircle, Volume2 } from 'lucide-react';
 import { api } from '../api/client';
 import { TariffConfig, TariffSlab } from '../types';
+import { isAudioAssistantEnabled, setAudioAssistantEnabled, speakPowerOptix } from '../utils/audioAssistant';
 
 interface SettingsProps {
   onDataChanged: () => void;
@@ -147,6 +148,67 @@ export const SettingsPage: React.FC<SettingsProps> = ({ onDataChanged }) => {
         </div>
       </form>
 
+      {/* AUDIO ASSISTANT CONFIGURATION */}
+      <AudioSettingsSection />
+
+    </div>
+  );
+};
+
+const AudioSettingsSection: React.FC = () => {
+  const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
+
+  useEffect(() => {
+    setAudioEnabled(isAudioAssistantEnabled());
+  }, []);
+
+  const handleToggle = () => {
+    const newState = setAudioAssistantEnabled(!audioEnabled);
+    setAudioEnabled(newState);
+  };
+
+  const handleTestAudio = () => {
+    if (!audioEnabled) {
+      alert('Please turn ON Audio Assistant first.');
+      return;
+    }
+    speakPowerOptix('Audio assistant voice test completed successfully.', 'MEDIUM', 'test_audio_' + Date.now(), 'success');
+  };
+
+  return (
+    <div className="glass-panel" style={{ padding: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+            <Volume2 size={18} color="var(--accent-cyan)" />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Smart Audio Alert & Voice Feedback Assistant</h3>
+          </div>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '650px' }}>
+            Provides short, intelligent spoken voice feedback and subtle chime notifications for optimization results, anomaly alerts, high consumption warnings, and peak load events using the browser's Web Speech API.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button
+            type="button"
+            onClick={handleTestAudio}
+            disabled={!audioEnabled}
+            className="btn btn-secondary"
+            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+          >
+            🔊 Test Voice
+          </button>
+
+          <button
+            type="button"
+            onClick={handleToggle}
+            className={`btn ${audioEnabled ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ padding: '0.6rem 1.25rem', fontWeight: 700 }}
+          >
+            {audioEnabled ? '🔊 Audio Assistant: ON' : '🔇 Audio Assistant: OFF'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

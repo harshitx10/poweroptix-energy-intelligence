@@ -241,6 +241,20 @@ def run_backend_audit():
         "issue": None if len(factors) == 6 else "Efficiency score sub-factor evaluation incomplete"
     })
 
+    # 14. GET /api/daily-energy (Daily Energy Intelligence & Billing Projections)
+    status, body = http_req(f"{BASE_URL}/daily-energy")
+    daily_cost = body.get("average_daily_cost")
+    daily_kwh = body.get("average_daily_consumption_kwh")
+    today_cost = body.get("today_estimated_cost")
+    report_items.append({
+        "endpoint": "GET /api/daily-energy",
+        "input": "Stored appliances & slab tariff configuration",
+        "expected": "Status 200 with average_daily_cost, average_daily_consumption_kwh, today_estimated_cost, projected_monthly_bill",
+        "actual": f"Status {status}: Avg Daily Cost = INR {daily_cost}, Avg Daily kWh = {daily_kwh}, Today Cost = INR {today_cost}",
+        "pass": status == 200 and daily_cost is not None and daily_cost > 0 and today_cost is not None,
+        "issue": None if status == 200 and daily_cost > 0 else "Daily energy endpoint failed"
+    })
+
     # 14. Error Handling Verification (Invalid Appliance ID 99999)
     status, body = http_req(f"{BASE_URL}/appliances/99999", method="DELETE")
     report_items.append({
